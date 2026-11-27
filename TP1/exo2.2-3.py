@@ -107,5 +107,101 @@ plt.tight_layout()
 print(f"K-Means : Modèle entraîné pour K = {k_optimal}.")
 print("Affichage des 4 figures (fermer les fenêtres pour terminer le script)...")
 
-# Affichage de tous les graphiques
+"""
+Partie 3 : Réalisation algorithmique (K-Means "from scratch")
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def coalescence(x, K, g):
+    """
+    Implémente l'algorithme des centres mobiles (K-Means).
+    
+    Paramètres:
+    x : numpy.ndarray, matrice (N, 2) contenant les individus
+    K : int, nombre de classes
+    g : numpy.ndarray, matrice (K, 2) des centroïdes initiaux
+    
+    Retourne:
+    clas : numpy.ndarray, vecteur (N,) des indices de classe
+    g2 : numpy.ndarray, matrice (K, 2) des centroïdes finaux
+    """
+    N = x.shape[0]
+    g2 = np.copy(g)
+    clas = np.zeros(N, dtype=int)
+    
+    while True:
+        distances = np.zeros((N, K))
+        
+        # 1. Étape d'affectation : calcul de d(x1, x2) = (x1-x2)^T (x1-x2)
+        for i in range(K):
+            # Différence vectorielle entre chaque individu de x et le centre g2[i]
+            diff = x - g2[i, :]
+            # np.sum(diff**2) par ligne équivaut au produit scalaire du vecteur par lui-même
+            distances[:, i] = np.sum(diff**2, axis=1) 
+            
+        new_clas = np.argmin(distances, axis=1)
+        
+        # Condition d'arrêt : les individus ne changent plus de classe
+        if np.array_equal(clas, new_clas):
+            break
+            
+        clas = np.copy(new_clas)
+        
+        # 2. Étape de mise à jour des centres de gravité
+        for i in range(K):
+            # Extraction des individus appartenant à la classe i
+            points_classe = x[clas == i]
+            # Sécurité anti-division par zéro si un cluster se vide
+            if len(points_classe) > 0:
+                g2[i, :] = np.mean(points_classe, axis=0)
+                
+    return clas, g2
+
+# ==============================================================================
+# SCRIPT DE TEST (Question 2, 3 et 4)
+# ==============================================================================
+
+# 1. Génération du corpus (Reprise de la partie 1)
+rng = np.random.default_rng()
+
+mean1 = np.array([2.0, 2.0])
+cov1 = np.array([[2.0, 0.0], [0.0, 2.0]])
+X1 = rng.multivariate_normal(mean1, cov1, size=128)
+
+mean2 = np.array([-4.0, -4.0])
+cov2 = np.array([[6.0, 0.0], [0.0, 6.0]])
+X2 = rng.multivariate_normal(mean2, cov2, size=128)
+
+x_data = np.concatenate((X1, X2), axis=0)
+K_test = 2
+
+# Exécution du test plusieurs fois pour observer la sensibilité à l'initialisation
+nb_tests = 3
+fig, axes = plt.subplots(1, nb_tests, figsize=(15, 5))
+fig.suptitle("Test de l'algorithme de coalescence (K=2) avec différentes initialisations aléatoires", fontsize=14)
+
+for t in range(nb_tests):
+    # 2. Choix aléatoire de K individus pour les centres initiaux
+    indices_init = rng.choice(x_data.shape[0], size=K_test, replace=False)
+    g_initial = x_data[indices_init, :]
+    
+    # Appel de la fonction de coalescence
+    classes, centres_finaux = coalescence(x_data, K_test, g_initial)
+    
+    # 3. Affichage graphique de la partition
+    ax = axes[t]
+    ax.scatter(x_data[:, 0], x_data[:, 1], c=classes, cmap='viridis', alpha=0.7, s=30)
+    
+    # Affichage des centres initiaux (Croix noires) et finaux (Croix rouges)
+    ax.scatter(g_initial[:, 0], g_initial[:, 1], c='black', marker='X', s=100, label='Centres initiaux')
+    ax.scatter(centres_finaux[:, 0], centres_finaux[:, 1], c='red', marker='X', s=100, label='Centres finaux')
+    
+    ax.set_title(f"Test n°{t+1}")
+    ax.grid(True, linestyle='--', alpha=0.5)
+    if t == 0:
+        ax.legend()
+
+plt.tight_layout()
 plt.show()
